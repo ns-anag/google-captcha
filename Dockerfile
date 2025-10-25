@@ -13,9 +13,7 @@ RUN npm ci --only=production
 # Copy application files
 COPY recaptcha-express-backend.js .
 COPY index.html .
-
-# Copy public directory if it has static assets
-COPY public ./public 2>/dev/null || true
+COPY public ./public
 
 # Expose the application port
 EXPOSE 3000
