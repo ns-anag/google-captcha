@@ -1,32 +1,19 @@
-# Google reCAPTCHA Enterprise Demo# Getting Started with Create React App
+# Google reCAPTCHA Enterprise Demo
 
+A complete implementation of Google reCAPTCHA Enterprise with a Vue.js frontend and Express.js backend, demonstrating score-based authentication for login forms.
 
+## 🚀 Features
 
-A complete implementation of Google reCAPTCHA Enterprise with a Vue.js frontend and Express.js backend, demonstrating score-based authentication for login forms.This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
-
-
-
-## 🚀 Features## Available Scripts
-
-
-
-- **Vue.js 3** frontend with CDN-based setupIn the project directory, you can run:
-
+- **Vue.js 3** frontend with CDN-based setup
 - **Tailwind CSS** for modern, responsive styling
-
-- **Google reCAPTCHA Enterprise** integration with score-based verification### `npm start`
-
+- **Google reCAPTCHA Enterprise** integration with score-based verification
 - **Express.js** backend server for token validation
-
-- **Real-time score display** showing reCAPTCHA assessment resultsRuns the app in the development mode.\
-
-- **Comprehensive error handling** with user-friendly messagesOpen [http://localhost:3000](http://localhost:3000) to view it in the browser.
-
+- **Real-time score display** showing reCAPTCHA assessment results
+- **Comprehensive error handling** with user-friendly messages
 - **Raw response viewer** for debugging and transparency
+- **Docker support** for containerized deployment
 
-The page will reload if you make edits.\
-
-## 📋 PrerequisitesYou will also see any lint errors in the console.
+## 📋 Prerequisites
 
 
 
