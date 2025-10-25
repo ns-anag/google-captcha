@@ -1,8 +1,5 @@
 /*
     This is your Express.js backend server.
-    It has been updated to handle BOTH:
-    1. POST /login-v3 : Verifies the invisible v3 token and checks the score.
-    2. POST /login-v2 : Verifies the visible v2 challenge token.
 */
 
 const express = require('express');
@@ -11,18 +8,19 @@ const cors = require('cors'); // For allowing cross-origin requests
 
 // --- Configuration ---
 // !! ========================================================== !!
-// !! v3 Enterprise Keys                                       !!
+// !! v3 Enterprise Keys ("ns-anag-test-key-low-score")
 // !! ========================================================== !!
 const GC_PROJECT_ID = "rbi-dev-qe"; // Your Google Cloud Project ID
 const GC_API_KEY = "AIzaSyBRgJiwVF518s6BvhjCqiPssflTBG-DEBA"; // Your Google Cloud API Key
-const V3_SITE_KEY = "6LfA2PUrAAAAAHpAiEqVIjx75by751WRkBxiyhRK"; // Your reCAPTCHA v3 Site Key
+const V3_SITE_KEY = "6LfA2PUrAAAAAHpAiEqVIjx75by751WRkBxiyhRK"; // ns-anag-demo
+// const V3_SITE_KEY = "6LdhgPYrAAAAAM4tChgopVnOuKjHx18tXneXgmFw"; // ns-anag-test-key-low-score
 // !! ========================================================== !!
 
 // !! ========================================================== !!
-// !! IMPORTANT: Add your new reCAPTCHA v2 (Checkbox) SECRET KEY !!
+// !! v2 Challenge Enterprise Keys ("ns-anag-demo-challenge")
 // !! ========================================================== !!
-const V2_SECRET_KEY = "6Ldo3fUrAAAAAAAYjyoy8oEVaT_CU8z41OMVigN0";
-// !! ========================================================== !!
+const V2_CHALLENGE_SITE_KEY = "6Ldo3fUrAAAAAAAYjyoy8oEVaT_CU8z41OMVigN0";
+
 
 // Set the score threshold. Any score BELOW this will require a v2 challenge.
 const SCORE_THRESHOLD = 0.5;
@@ -38,11 +36,13 @@ app.set('trust proxy', true);
 
 // Serve index.html at root first, before static middleware
 app.get('/', (req, res) => {
+    // This assumes index.html is in the same directory as the script
     res.sendFile(__dirname + '/index.html');
 });
 
 // Serve static files from the public directory for other assets
-app.use(express.static('public'));
+// If you have a 'public' folder, create it and put assets there.
+// app.use(express.static('public'));
 
 
 // --- Routes ---
@@ -76,7 +76,7 @@ app.post('/login-v3', async (req, res) => {
         const assessmentBody = {
             event: {
                 token: token,
-                siteKey: V3_SITE_KEY,
+                siteKey: V3_SITE_KEY, // Use the v3 site key
                 expectedAction: "login",
                 userAgent: userAgent,
                 userIpAddress: userIpAddress
@@ -148,33 +148,64 @@ app.post('/login-v3', async (req, res) => {
 /*
  * @route   POST /login-v2
  * @desc    Handles the v2 checkbox challenge verification
+ * --- NOW USING THE ENTERPRISE 'ASSESSMENTS' API ---
  * @access  Public
  */
 app.post('/login-v2', async (req, res) => {
     try {
         const { username, password, token } = req.body;
-        console.log(`[v2] Challenge attempt for user: ${username}`);
+        const userAgent = req.headers['user-agent'];
+        const xForwardedFor = req.headers['x-forwarded-for'];
+        
+        let userIpAddress;
+        if (xForwardedFor) {
+            userIpAddress = xForwardedFor.split(',')[0].trim();
+        } else {
+            userIpAddress = req.ip;
+        }
+        
+        console.log(`[v2-Enterprise] Challenge attempt for user: ${username}`);
+        console.log(` > User IP: ${userIpAddress}`);
 
         if (!token) {
             return res.status(400).json({ success: false, message: 'reCAPTCHA v2 token is missing.' });
         }
         
-        if (!V2_SECRET_KEY || V2_SECRET_KEY === "YOUR_NEW_V2_CHECKBOX_SECRET_KEY_HERE") {
-             console.error("[v2] FATAL ERROR: V2_SECRET_KEY is not set.");
-             return res.status(500).json({ success: false, message: 'Server configuration error: v2 secret is missing.' });
+        // --- NEW: Use the Enterprise Assessments API for v2/challenge token ---
+        const assessmentUrl = `https://recaptchaenterprise.googleapis.com/v1/projects/${GC_PROJECT_ID}/assessments?key=${GC_API_KEY}`;
+        const assessmentBody = {
+            event: {
+                token: token,
+                siteKey: V2_CHALLENGE_SITE_KEY, // Use the v2/challenge site key
+                expectedAction: "login", // Action should still be login
+                userAgent: userAgent,
+                userIpAddress: userIpAddress
+            }
+        };
+
+        const googleResponse = await fetch(assessmentUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(assessmentBody)
+        });
+
+        const assessmentData = await googleResponse.json();
+        console.log("[v2-Enterprise] Google Assessment Response:", JSON.stringify(assessmentData, null, 2));
+
+        // Check for API-level errors first
+        if (assessmentData.error) {
+            console.error('[v2-Enterprise] reCAPTCHA API Error:', assessmentData.error.message);
+            return res.status(400).json({
+                success: false,
+                message: `reCAPTCHA Enterprise API Error: ${assessmentData.error.message}`,
+                fullResponse: assessmentData
+            });
         }
 
-        // Verify the v2 token using the api/siteverify endpoint
-        const verifyUrl = `https://www.google.com/recaptcha/api/siteverify?secret=${V2_SECRET_KEY}&response=${token}`;
-        
-        const googleResponse = await fetch(verifyUrl, { method: 'POST' });
-        const googleData = await googleResponse.json();
-
-        console.log("[v2] Google Verification Response:", googleData);
-
-        if (googleData.success) {
+        // Now check if the token itself was valid
+        if (assessmentData.tokenProperties.valid) {
             // V2 Challenge Passed!
-            console.log("[v2] Challenge passed. Login successful.");
+            console.log("[v2-Enterprise] Challenge passed. Login successful.");
             
             // --- Your REAL Login Logic Here ---
             // You would check username/password against DB
@@ -183,20 +214,20 @@ app.post('/login-v2', async (req, res) => {
             return res.status(200).json({
                 success: true,
                 message: `Login successful! Challenge passed. Welcome, ${username}.`,
-                fullResponse: googleData
+                fullResponse: assessmentData
             });
         } else {
             // V2 Challenge Failed
-            console.log("[v2] Challenge failed.");
+            console.log("[v2-Enterprise] Challenge failed.");
             return res.status(400).json({
                 success: false,
                 message: 'CAPTCHA verification failed. Please try again.',
-                fullResponse: googleData
+                fullResponse: assessmentData
             });
         }
 
     } catch (error) {
-        console.error('[v2] Server error:', error);
+        console.error('[v2-Enterprise] Server error:', error);
         return res.status(500).json({ success: false, message: 'Internal server error.' });
     }
 });
@@ -204,6 +235,6 @@ app.post('/login-v2', async (req, res) => {
 
 // --- Start Server ---
 app.listen(PORT, () => {
-    console.log(`reCAPTCHA backend server running on http://localhost:${PORT}`);
+    console.log(`reCAPTCHA backend server running on port ${PORT}`);
 });
 

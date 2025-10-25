@@ -9,12 +9,18 @@
     <!-- 2. Load Vue.js (v3) -->
     <script src="https://unpkg.com/vue@3"></script>
     
-    <!-- 3. Load Google reCAPTCHA Enterprise (v3) API -->
+    <!-- 3. Load Google reCAPTCHA Enterprise (v3) API (ns-anag-demo)-->
     <script 
         src="https://www.google.com/recaptcha/enterprise.js?render=6LfA2PUrAAAAAHpAiEqVIjx75by751WRkBxiyhRK&onload=onV3Load" 
         async 
         defer>
     </script>
+    <!-- 3. Load Google reCAPTCHA Enterprise (v3) API (ns-anag-test-key-low-score)-->
+    <!-- <script 
+        src="https://www.google.com/recaptcha/enterprise.js?render=6LdhgPYrAAAAAM4tChgopVnOuKjHx18tXneXgmFw&onload=onV3Load" 
+        async 
+        defer>
+    </script> -->
     
     <!-- 4. Load Google reCAPTCHA v2 API (for the challenge) -->
     <!-- 'onload=onV2Load' and 'render=explicit' are key -->
@@ -161,6 +167,8 @@
     <script>
         // Your reCAPTCHA Enterprise (v3) Site Key
         const ENTERPRISE_SITE_KEY = "6LfA2PUrAAAAAHpAiEqVIjx75by751WRkBxiyhRK";
+        // reCAPTHA Enterprice v3 Site Key for low score testing
+        // const ENTERPRISE_SITE_KEY = "6LdhgPYrAAAAAM4tChgopVnOuKjHx18tXneXgmFw";
 
         // !! ========================================================== !!
         // !! IMPORTANT: Add your new reCAPTCHA v2 (Checkbox) SITE KEY   !!
