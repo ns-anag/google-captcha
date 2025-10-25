@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vue.js reCAPTCHA Enterprise</title>
+    <!-- 1. Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 2. Load Vue.js (v3) -->
+    <script src="https://unpkg.com/vue@3"></script>
+    <!-- 3. Load Google reCAPTCHA Enterprise API -->
+    <!-- 
+      FIX: Added '&onload=onRecaptchaLoad' to the src.
+      This tells the reCAPTCHA script to call the 'onRecaptchaLoad' function
+      once it has finished loading.
+    -->
+    <script 
+        src="https://www.google.com/recaptcha/enterprise.js?render=6LfA2PUrAAAAAHpAiEqVIjx75by751WRkBxiyhRK&onload=onRecaptchaLoad" 
+        async 
+        defer>
+    </script>
+    <!-- 4. Load Lucide icons -->
+    <script src="https://unpkg.com/lucide-vue-next"></script>
+    
+    <script>
+      // Configure Tailwind to use Inter font
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+            },
+          },
+        },
+      }
+    </script>
+    
+    <style>
+        /* Simple style for message boxes */
+        .message {
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-top: 1rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+        }
+        .message-success { background-color: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+        .message-error { background-color: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+        .message-info { background-color: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe; }
+        
+        /* Style for the raw JSON response */
+        pre {
+            background-color: #1f2937; /* Dark background */
+            border: 1px solid #374151;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            overflow-x: auto; /* Horizontal scroll */
+            overflow-y: auto; /* Vertical scroll */
+            max-height: 70vh; /* Limit height to 70% of viewport height */
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+            font-size: 0.875rem;
+            color: #d1d5db; /* Light text */
+            margin-top: 0.5rem;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans antialiased">
+    
+    <!-- 
+      Main layout container:
+      - Mobile: A single column (flex-col)
+      - Desktop: A row (lg:flex-row) with items aligned to the top (lg:items-start)
+    -->
+    <div id="app" class="flex flex-col lg:flex-row items-center lg:items-start justify-center min-h-screen p-4 lg:p-8 gap-8">
+        
+        <!-- Login Card -->
+        <div class="w-full max-w-md p-8 space-y-6 bg-white rounded-2xl shadow-xl flex-shrink-0">
+            <!-- Header -->
+            <div class="flex flex-col items-center">
+                <span class="p-3 bg-blue-100 rounded-full">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-600 lucide lucide-shield-check"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+                </span>
+                <h1 class="mt-4 text-2xl font-bold text-center text-gray-900">Login (reCAPTCHA Enterprise)</h1>
+                <p class="text-sm text-center text-gray-600">This form is protected by Google reCAPTCHA.</p>
+            </div>
+            
+            <!-- Login Form -->
+            <form @submit.prevent="handleSubmit" class="space-y-6">
+                
+                <!-- Username Field -->
+                <div>
+                    <label for="username" class="block text-sm font-medium text-gray-700">Username</label>
+                    <input 
+                        v-model="username"
+                        type="text" 
+                        id="username"
+                        class="w-full px-4 py-2 mt-1 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 transition duration-150"
+                        placeholder="your-username"
+                        required
+                    >
+                </div>
+                
+                <!-- Password Field -->
+                <div>
+                    <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
+                    <input 
+                        v-model="password"
+                        type="password" 
+                        id="password"
+                        class="w-full px-4 py-2 mt-1 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 transition duration-150"
+                        placeholder="••••••••"
+                        required
+                    >
+                </div>
+                
+                <!-- Submit Button -->
+                <div>
+                    <button 
+                        type="submit" 
+                        :disabled="loading"
+                        class="w-full flex justify-center px-4 py-2.5 font-medium text-white bg-blue-600 rounded-lg shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition duration-150"
+                    >
+                        <!-- 
+                          TYPO FIX: Changed 'vV-if' to 'v-if' 
+                          This will now correctly show/hide the spinner based on the 'loading' state.
+                        -->
+                        <svg v-if="loading" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        {{ loading ? 'Verifying...' : 'Login' }}
+                    </button>
+                </div>
+            </form>
+            
+            <!-- Message Area (stays inside the card) -->
+            <div v-if="message" :class="['message', `message-${messageType}`]">
+                <!-- Icons for messages -->
+                <svg v-if="messageType === 'success'" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2 lucide lucide-check-circle"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>
+                <svg v-if="messageType === 'error'" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2 lucide lucide-alert-triangle"><path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+
+                <svg v-if="messageType === 'info'" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2 lucide lucide-info"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                
+                <span class="flex-1">{{ message }}</span>
+            </div>
+            
+            <!-- Raw Response Display has been MOVED outside this card -->
+        </div>
+
+        <!-- 
+          Raw Response Display 
+          - Moved outside the login card to be its own column on desktop.
+          - 'v-if' will show/hide this entire block.
+          - 'lg:max-w-2xl' makes it much wider on large screens.
+        -->
+        <div v-if="rawResponse" class="w-full max-w-md lg:max-w-2xl">
+            <h3 class="text-sm font-semibold text-gray-700">Raw Backend Response:</h3>
+            <pre>{{ JSON.stringify(rawResponse, null, 2) }}</pre>
+        </div>
+
+    </div>
+
+    <script>
+        // Your reCAPTCHA Enterprise Site Key
+        const ENTERPRISE_SITE_KEY = "6LfA2PUrAAAAAHpAiEqVIjx75by751WRkBxiyhRK";
+    
+        // FIX: Removed the first 'const app' declaration that was causing the error.
+        
+        // This needs to be called after grecaptcha is loaded.
+        // We'll use the 'onload' callback from the script tag.
+        // function onRecaptchaLoad() { // This is now defined globally below
+        //      console.log("reCAPTCHA Enterprise API loaded.");
+        //      app.mount('#app');
+        // }
+        
+        // We need to define 'app' in the global scope so 'onRecaptchaLoad' can see it.
+        const app = Vue.createApp({
+            data() {
+                return {
+                    username: '',
+                    password: '',
+                    message: '',
+                    messageType: 'info', // 'info', 'success', 'error'
+                    loading: false,
+                    rawResponse: null,
+                }
+            },
+            methods: {
+                async handleSubmit() {
+                    this.loading = true;
+                    this.message = 'Verifying...';
+                    this.messageType = 'info';
+                    // Do not reset rawResponse here, so it persists until the *next* successful/failed attempt
+                    // this.rawResponse = null; 
+
+                    if (typeof grecaptcha === 'undefined' || !grecaptcha.enterprise) {
+                        this.message = 'Error: reCAPTCHA Enterprise script did not load. Check your Site Key in the script tag.';
+                        this.messageType = 'error';
+                        this.loading = false;
+                        return;
+                    }
+                    
+                    grecaptcha.enterprise.ready(async () => {
+                        try {
+                            const token = await grecaptcha.enterprise.execute(ENTERPRISE_SITE_KEY, { action: 'login' });
+                            
+                            const response = await fetch('http://localhost:3000/login', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                    username: this.username,
+                                    password: this.password,
+                                    token: token 
+                                })
+                            });
+
+                            const data = await response.json();
+                            this.rawResponse = data; // Set the raw response here
+
+                            if (response.ok) {
+                                this.message = `${data.message} (Score: ${data.score})`;
+                                this.messageType = 'success';
+                            } else {
+                                throw new Error(data.message || 'An unknown error occurred.');
+                            }
+
+                        } catch (error) {
+                            console.error('Login failed:', error);
+                            this.message = `Error: ${error.message}`;
+                            this.messageType = 'error';
+                            if (!this.rawResponse) {
+                                // Only set rawResponse if it's not already set by a failed API call
+                                this.rawResponse = { error: error.message, success: false };
+                            }
+                        } finally {
+                            this.loading = false;
+                        }
+                    });
+                }
+            }
+        });
+        
+        // Add the onload function to the global scope
+        window.onRecaptchaLoad = () => {
+            console.log("reCAPTCHA Enterprise API loaded.");
+            app.mount('#app');
+        };
+
+    </script>
+</body>
+</html>
+
