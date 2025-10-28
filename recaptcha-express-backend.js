@@ -79,7 +79,8 @@ app.post('/login-v3', async (req, res) => {
                 siteKey: V3_SITE_KEY, // Use the v3 site key
                 expectedAction: "login",
                 userAgent: userAgent,
-                userIpAddress: userIpAddress
+                userIpAddress: userIpAddress,
+                requestedUri: req.protocol + '://' + req.get('host') + req.originalUrl,
             }
         };
 
@@ -179,7 +180,8 @@ app.post('/login-v2', async (req, res) => {
                 siteKey: V2_CHALLENGE_SITE_KEY, // Use the v2/challenge site key
                 expectedAction: "login", // Action should still be login
                 userAgent: userAgent,
-                userIpAddress: userIpAddress
+                userIpAddress: userIpAddress,
+                requestedUri: req.protocol + '://' + req.get('host') + req.originalUrl,
             }
         };
 
